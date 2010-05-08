@@ -21,7 +21,7 @@ Definition step (s0:state) (stmt:stmt) : state :=
 Definition step_path s0 p := fold_left step p s0.
 
 Definition pec_check (c c':correlation) (p1 p2:path) : bool :=
-  false.
+  true.
 
 Theorem pec_check_correct :
   forall c c' p1 p2 sL sR,
@@ -30,5 +30,9 @@ Theorem pec_check_correct :
     correlation_holds c' (step_path sL p1) (step_path sR p2).
 Proof.
   intros.
-  inversion H0.
+  induction c'.
+    destruct step_path. destruct step_path.
+    apply states_eq_holds.
+
+    apply true_c_holds.
 Qed.
