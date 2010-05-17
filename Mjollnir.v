@@ -79,7 +79,7 @@ Definition my_program_opt :=
   assign 3 (intlit (Vint (Int.repr 8))) ::
   nil.
 
-Lemma my_program_opt_correct : 
+Lemma my_program_opt_correct_0 : 
   correlation_holds states_eq
   (step_path empty_state my_program)
   (step_path empty_state my_program_opt).
@@ -100,7 +100,7 @@ Definition P_my_program_opt x y :=
   assign 3 (intlit (Vint (Int.add (Int.repr x) (Int.repr y)))) ::
   nil.
 
-Lemma P_my_program_opt_correct : forall x y,
+Lemma P_my_program_opt_correct_0 : forall x y,
   correlation_holds states_eq
   (step_path empty_state (P_my_program x y))
   (step_path empty_state (P_my_program_opt x y)).
@@ -109,6 +109,17 @@ Proof.
   apply states_eq_holds. (* Wow! *)
 Qed.
 
+(* The real thing: start from arbitrary states *)
+Lemma P_my_program_opt_correct : forall s0 s1 x y,
+  correlation_holds states_eq s0 s1 ->
+  correlation_holds states_eq
+    (step_path s0 (P_my_program x y))
+    (step_path s1 (P_my_program x y)).
+Proof.
+  intros.
+  inversion H; subst.
+  apply states_eq_holds.
+Qed.
 
 
 (* Old stuff *)
