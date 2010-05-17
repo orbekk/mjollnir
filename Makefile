@@ -2,7 +2,7 @@
 # A very bad Makefile
 #
 
-CONTRIB=Coqlib.v Errors.v Integers.v Floats.v AST.v Maps.v Ordered.v \
+CONTRIB=Coqlib.v Errors.v Integers.v Floats.v Values.v AST.v Maps.v Ordered.v \
 	 Registers.v
 
 .PHONY: contrib
