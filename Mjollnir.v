@@ -9,6 +9,9 @@ Require Import Integers.
 (* ToDo: Add Mach to contrib (many dependencies) *)
 Definition regset := Regmap.t val.
 
+
+(*** Our language: ***)
+
 Inductive expr : Type :=
   | intlit : val -> expr
   | add : positive -> positive -> expr.
@@ -22,10 +25,6 @@ Definition path : Type := list stmt.
 Definition state : Type := regset.
 
 Definition empty_state : state := Regmap.init Vundef.
-
-Definition v := ((Regmap.init (Vint (Int.repr 5))) # 1).
-Eval compute in v.
-
 
 Inductive correlation : Type :=
   | states_eq : correlation
@@ -57,8 +56,17 @@ Definition step (s:state) (stmt:stmt) : state :=
 
 Definition step_path s0 p := fold_left step p s0.
 
+
+(*** Test code ***)
+
+(* Lookup *)
+Definition v := ((Regmap.init (Vint (Int.repr 5))) # 1).
+Eval compute in v.
+
+
 (* ToDo: Look at Zach's stuff and fix better notation *)
 
+(* A very simple program and its optimization *)
 Definition my_program :=
   assign 1 (intlit (Vint (Int.repr 5))) ::
   assign 2 (intlit (Vint (Int.repr 3))) ::
@@ -76,13 +84,34 @@ Lemma my_program_opt_correct :
   (step_path empty_state my_program)
   (step_path empty_state my_program_opt).
 Proof.
+  apply states_eq_holds.
+Qed.
+
+(* A "parameterized" version of the above program *)
+Definition P_my_program x y :=
+  assign 1 (intlit (Vint (Int.repr x))) ::
+  assign 2 (intlit (Vint (Int.repr y))) ::
+  assign 3 (add 1 2)                    ::
+  nil.
+
+Definition P_my_program_opt x y :=
+  assign 1 (intlit (Vint (Int.repr x))) ::
+  assign 2 (intlit (Vint (Int.repr y))) ::
+  assign 3 (intlit (Vint (Int.add (Int.repr x) (Int.repr y)))) ::
+  nil.
+
+Lemma P_my_program_opt_correct : forall x y,
+  correlation_holds states_eq
+  (step_path empty_state (P_my_program x y))
+  (step_path empty_state (P_my_program_opt x y)).
+Proof.
+  intros.
   apply states_eq_holds. (* Wow! *)
 Qed.
 
-Eval compute in (step_path empty_state my_program_opt) # 3.
 
 
-
+(* Old stuff *)
 Definition pec_check (c c':correlation) (p1 p2:path) : bool :=
   true.
 
