@@ -1,11 +1,23 @@
 Require Import List.
 
+Add LoadPath "contrib".
+Require Import Registers.
+Require Import Values.
+Require Import Coqlib.
+Require Import Integers.
+
+(* ToDo: Add Mach to contrib (many dependencies) *)
+Definition regset := Regmap.t val.
+
 Inductive stmt : Type :=
   | nop : stmt.
 
 Definition path : Type := list stmt.
 
-Definition state : Type := unit.
+Definition state : Type := regset.
+Definition v := ((Regmap.init (Vint (Int.repr 5))) # 1).
+Eval compute in ((Regmap.init (Vint (Int.repr 5))) # 1).
+
 
 Inductive correlation : Type :=
   | states_eq : correlation
@@ -36,3 +48,5 @@ Proof.
 
     apply true_c_holds.
 Qed.
+
+
