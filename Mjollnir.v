@@ -10,7 +10,7 @@ Require Import Integers.
 Definition regset := Regmap.t val.
 
 
-(*** Our language: ***)
+(*** The language: ***)
 
 Inductive expr : Type :=
   | intlit : val -> expr
@@ -40,22 +40,109 @@ Definition add_int_vals v1 v2 : val :=
     | _                => Vint (Int.zero)
   end.
 
-Definition eval (s:state) (e:expr) : val :=
+Definition eval_def (s:state) (e:expr) : val :=
   match e with
     | intlit x => x
     | add v1 v2 => add_int_vals (s#v1) (s#v2)
   end.
 
-Definition step (s:state) (stmt:stmt) : state :=
+Definition step_def (s:state) (stmt:stmt) : state :=
   match stmt with
     | skip => s
     | assign var e => 
-      let val := eval s e 
+      let val := eval_def s e 
         in s # var <- val
   end.
 
-Definition step_path s0 p := fold_left step p s0.
 
+Inductive eval : state -> expr -> val -> Prop :=
+  | eval_intlit : forall s x,
+    eval s (intlit x) x
+  | eval_add : forall s var1 var2,
+    eval s (add var1 var2) (add_int_vals (s#var1) (s#var2)).
+
+Inductive step : state -> stmt -> state -> Prop :=
+  | step_skip : forall s,
+    step s skip s
+  | step_assign : forall s var ex val,
+    eval s ex val ->
+    step s (assign var ex) (s # var <- val).
+    
+Definition step_path_def s0 p := fold_left step_def p s0.
+
+Inductive step_path : state -> path -> state -> Prop :=
+  | step_path_nil : forall s,
+    step_path s nil s
+  | step_path_cons : forall s stmt0 stmts s0 s',
+    step s stmt0 s0 ->
+    step_path s0 stmts s' ->
+    step_path s (stmt0::stmts) s'.
+
+Theorem eval_result_unique : forall s0 s1 e v0 v1,
+  correlation_holds states_eq s0 s1 ->
+  eval s0 e v0 ->
+  eval s1 e v1 ->
+  v0 = v1.
+Proof.
+intros.
+destruct e.
+inversion H0. subst.
+inversion H1. subst.
+reflexivity.
+
+inversion H0. subst.
+inversion H1. subst.
+inversion H. subst.
+reflexivity.
+Qed.
+
+Theorem step_program_state_equal : forall s0 s1 stmt s'0 s'1,
+  correlation_holds states_eq s0 s1 ->
+  step s0 stmt s'0 ->
+  step s1 stmt s'1 ->
+  correlation_holds states_eq s'0 s'1.
+Proof.
+  intros.
+  destruct H.
+  destruct stmt0; inversion H0; inversion H1; subst.
+  rewrite -> H5.
+  constructor.
+
+  assert (val = val0).
+  apply eval_result_unique with (s0 := st) (s1 := st) (e := e).
+  constructor. auto. auto.
+
+  rewrite -> H.
+  constructor.
+
+  constructor.
+Qed.
+ 
+
+Theorem same_program_state_equal : forall p s0 s1 s'0 s'1,
+  correlation_holds states_eq s0 s1 ->
+  step_path s0 p s'0 ->
+  step_path s1 p s'1 ->
+  correlation_holds states_eq s'0 s'1.
+Proof.
+  induction p. 
+
+    intros.
+    destruct H.
+    inversion H0. inversion H1. subst.
+    rewrite -> H5.
+    apply states_eq_holds.
+
+    apply true_c_holds.
+
+    intros.
+    
+    inversion H0; inversion H1; subst.
+    apply IHp with (s0 := s2) (s1 := s4).
+    Check step_program_state_equal.
+    apply step_program_state_equal with (s0 := s0) (s1 := s1) (stmt := a).
+    auto. assumption. assumption. assumption. assumption.
+Qed.
 
 (*** Test code ***)
 
@@ -63,8 +150,6 @@ Definition step_path s0 p := fold_left step p s0.
 Definition v := ((Regmap.init (Vint (Int.repr 5))) # 1).
 Eval compute in v.
 
-
-(* ToDo: Look at Zach's stuff and fix better notation *)
 
 (* A very simple program and its optimization *)
 Definition my_program :=
@@ -81,11 +166,55 @@ Definition my_program_opt :=
 
 Lemma my_program_opt_correct_0 : 
   correlation_holds states_eq
-  (step_path empty_state my_program)
-  (step_path empty_state my_program_opt).
+  (step_path_def empty_state my_program)
+  (step_path_def empty_state my_program_opt).
 Proof.
   apply states_eq_holds.
 Qed.
+
+Lemma my_program_opt_connect_0_I : forall s0 s1,
+  (step_path empty_state my_program s0) ->
+  (step_path empty_state my_program_opt s1) ->
+  correlation_holds states_eq s0 s1.
+Proof.
+  intros s0 s1 Hstep0 Hstep1.
+  inversion Hstep0. subst.
+  inversion Hstep1. subst.
+
+  assert (correlation_holds states_eq s2 s3).
+  apply step_program_state_equal with
+    (s0 := empty_state) (s1:= empty_state) 
+    (stmt := (assign 1 (intlit (Vint (Int.repr 5))))).
+    constructor. assumption. assumption.
+
+  clear H2 H3.
+
+  inversion H4. inversion H6. subst.
+
+  assert (correlation_holds states_eq s4 s6).
+  apply step_program_state_equal with
+    (s0 := s2) (s1 := s3)
+    (stmt := (assign 2 (intlit (Vint (Int.repr 3))))).
+  assumption. assumption. assumption.
+
+  clear H3 H11.
+
+  inversion H7. inversion H13. subst.
+
+  assert (correlation_holds states_eq s5 s8).
+  inversion H5.
+  inversion H14. subst.
+
+  inversion H10. inversion H18. subst.
+
+  assert (add_int_vals s4 # 1 s4 # 2 = Vint (Int.repr 8)).
+  
+  (* We would like to show this. But at this point we need more
+  information about the state variables, which is hidden in the
+  state_equal theorem *)
+Admitted.
+
+  
 
 (* A "parameterized" version of the above program *)
 Definition P_my_program x y :=
