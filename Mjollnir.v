@@ -6,7 +6,6 @@ Require Import Values.
 Require Import Coqlib.
 Require Import Integers.
 
-(* ToDo: Add Mach to contrib (many dependencies) *)
 Definition regset := Regmap.t val.
 
 
@@ -208,10 +207,8 @@ Proof.
   inversion H10. inversion H18. subst.
 
   assert (add_int_vals s4 # 1 s4 # 2 = Vint (Int.repr 8)).
-  
-  (* We would like to show this. But at this point we need more
-  information about the state variables, which is hidden in the
-  state_equal theorem *)
+
+  (* :-( *)
 Admitted.
 
   
@@ -251,7 +248,7 @@ Proof.
 Qed.
 
 
-(* Old stuff *)
+(* This is from the first iteration. This approach is too simple *)
 Definition pec_check (c c':correlation) (p1 p2:path) : bool :=
   true.
 
